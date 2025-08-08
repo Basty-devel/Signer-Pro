@@ -1,4 +1,4 @@
-# Enterprise File Signer
+# Signer-Pro - Evasion and Delivery in 1 hand
 
 A professional application for signing executable files and scripts (.exe, .py, etc.) using certificates from remote sources, with options for local saving or network distribution.
 
