@@ -1,0 +1,51 @@
+2025-08-08 21:40:01,999 - SignerApp - INFO - Application started
+2025-08-08 21:40:37,213 - SignerApp - INFO - Selected file: C:/Users/nese1/Desktop/s3cr3t/QuantumEncryptorLauncher.exe
+2025-08-08 21:41:09,719 - SignerApp - INFO - Certificate downloaded from https://microsoft.com
+2025-08-08 21:41:09,958 - SignerApp - ERROR - Key loading failed: ('Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters).', [<OpenSSLError(code=503841036, lib=60, reason=524556, reason_text=unsupported)>])
+2025-08-08 21:41:28,073 - SignerApp - ERROR - Processing error: ('Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters).', [<OpenSSLError(code=503841036, lib=60, reason=524556, reason_text=unsupported)>])
+2025-08-08 21:41:28,077 - SignerApp - ERROR - Processing failed
+Traceback (most recent call last):
+  File "C:\Users\nese1\Desktop\Signer-Pro\signer-pro.py", line 212, in process_file
+    private_key = CertificateHandler.load_private_key(cert_data)
+  File "C:\Users\nese1\Desktop\Signer-Pro\signer-pro.py", line 42, in load_private_key
+    return serialization.load_pem_private_key(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        pem_data,
+        ^^^^^^^^^
+        password=None,
+        ^^^^^^^^^^^^^^
+        backend=default_backend()
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\cryptography\hazmat\primitives\serialization\base.py", line 25, in load_pem_private_key
+    return ossl.load_pem_private_key(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        data, password, unsafe_skip_rsa_key_validation
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\cryptography\hazmat\backends\openssl\backend.py", line 747, in load_pem_private_key
+    return self._load_key(
+           ~~~~~~~~~~~~~~^
+        self._lib.PEM_read_bio_PrivateKey,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        unsafe_skip_rsa_key_validation,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\cryptography\hazmat\backends\openssl\backend.py", line 929, in _load_key
+    self._handle_key_loading_error()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\site-packages\cryptography\hazmat\backends\openssl\backend.py", line 984, in _handle_key_loading_error
+    raise ValueError(
+    ...<5 lines>...
+    )
+ValueError: ('Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters).', [<OpenSSLError(code=503841036, lib=60, reason=524556, reason_text=unsupported)>])
+2025-08-08 21:52:38,068 - SignerApp - INFO - Application started
+2025-08-08 21:53:25,391 - SignerApp - INFO - Selected file: C:/Users/nese1/Desktop/s3cr3t/QuantumEncryptorLauncher.exe
+2025-08-08 21:53:38,929 - SignerApp - INFO - Generated self-signed certificate for microsoft.com
+2025-08-08 21:54:25,671 - SignerApp - INFO - Using self-signed certificate for microsoft.com
+2025-08-08 21:54:25,683 - SignerApp - INFO - File signed successfully
+2025-08-08 21:54:25,684 - SignerApp - INFO - Signature saved to C:\Users\nese1\Downloads\QuantumEncryptorLauncher.exe.sig

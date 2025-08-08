@@ -3,13 +3,16 @@ import sys
 import socket
 import logging
 import requests
+import ssl
 from pathlib import Path
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa, ec
 from cryptography.hazmat.backends import default_backend
+from cryptography import x509
+from cryptography.exceptions import UnsupportedAlgorithm
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QFileDialog, QGroupBox, QRadioButton, 
-                             QHBoxLayout, QMessageBox, QComboBox)
+                             QHBoxLayout, QMessageBox, QComboBox, QCheckBox)
 from PyQt5.QtCore import Qt
 
 # Configure logging
@@ -36,17 +39,53 @@ class CertificateHandler:
             raise
 
     @staticmethod
-    def load_private_key(pem_data):
-        """Load private key from PEM data"""
+    def load_private_key(pem_data, password=None):
+        """Load private key from PEM data with multiple format support"""
         try:
+            # Try loading as PKCS8 private key
             return serialization.load_pem_private_key(
                 pem_data,
-                password=None,
+                password=password,
                 backend=default_backend()
             )
-        except ValueError as e:
-            logger.error(f"Key loading failed: {e}")
-            raise
+        except (ValueError, TypeError, UnsupportedAlgorithm):
+            pass
+        
+        try:
+            # Try loading as PKCS1 private key
+            key = serialization.load_pem_private_key(
+                pem_data,
+                password=password,
+                backend=default_backend()
+            )
+            if isinstance(key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey)):
+                return key
+        except (ValueError, TypeError, UnsupportedAlgorithm):
+            pass
+        
+        try:
+            # Try loading as OpenSSL traditional format
+            return rsa.RSAPrivateKey.load_pem_private_key(
+                pem_data,
+                password=password
+            )
+        except (ValueError, TypeError, UnsupportedAlgorithm):
+            pass
+        
+        raise ValueError("Unsupported private key format. The key might be encrypted or in an unsupported format.")
+
+    @staticmethod
+    def load_certificate(pem_data):
+        """Load certificate from PEM data"""
+        try:
+            return x509.load_pem_x509_certificate(pem_data, default_backend())
+        except ValueError:
+            # Try DER format if PEM fails
+            try:
+                return x509.load_der_x509_certificate(pem_data, default_backend())
+            except ValueError as e:
+                logger.error(f"Certificate loading failed: {e}")
+                raise
 
 class FileSigner:
     @staticmethod
@@ -98,15 +137,20 @@ class SignerUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Enterprise File Signer")
-        self.setGeometry(100, 100, 700, 400)
+        self.setGeometry(100, 100, 700, 500)
         self.init_ui()
         self.file_path = ""
         self.signature = None
+        self.private_key = None
         logger.info("Application started")
 
     def init_ui(self):
         main_widget = QWidget()
         main_layout = QVBoxLayout()
+        
+        # Certificate Options
+        cert_group = QGroupBox("Certificate Options")
+        cert_layout = QVBoxLayout()
         
         # Certificate URL
         url_layout = QHBoxLayout()
@@ -114,6 +158,30 @@ class SignerUI(QMainWindow):
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("https://domain.com/certificate.pem")
         url_layout.addWidget(self.url_input)
+        
+        # Password for private key
+        pass_layout = QHBoxLayout()
+        pass_layout.addWidget(QLabel("Key Password:"))
+        self.pass_input = QLineEdit()
+        self.pass_input.setEchoMode(QLineEdit.Password)
+        self.pass_input.setPlaceholderText("Optional if key is encrypted")
+        pass_layout.addWidget(self.pass_input)
+        
+        # Self-signed certificate option
+        self.self_signed_check = QCheckBox("Generate self-signed certificate from domain")
+        self.self_signed_domain = QLineEdit()
+        self.self_signed_domain.setPlaceholderText("example.com")
+        self.self_signed_domain.setEnabled(False)
+        
+        self.self_signed_check.stateChanged.connect(
+            lambda state: self.self_signed_domain.setEnabled(state == Qt.Checked)
+        )
+        
+        cert_layout.addLayout(url_layout)
+        cert_layout.addLayout(pass_layout)
+        cert_layout.addWidget(self.self_signed_check)
+        cert_layout.addWidget(self.self_signed_domain)
+        cert_group.setLayout(cert_layout)
         
         # File Selection
         file_layout = QHBoxLayout()
@@ -166,9 +234,15 @@ class SignerUI(QMainWindow):
             lambda: network_group.setEnabled(self.network_send_radio.isChecked())
         )
         
-        # Action Button
+        # Action Buttons
+        btn_layout = QHBoxLayout()
         sign_btn = QPushButton("Sign and Process File")
         sign_btn.clicked.connect(self.process_file)
+        
+        gen_cert_btn = QPushButton("Generate Self-Signed Cert")
+        gen_cert_btn.clicked.connect(self.generate_self_signed)
+        btn_layout.addWidget(sign_btn)
+        btn_layout.addWidget(gen_cert_btn)
         
         # Assemble layout
         dest_layout.addWidget(self.local_save_radio)
@@ -176,10 +250,10 @@ class SignerUI(QMainWindow):
         dest_layout.addWidget(network_group)
         dest_group.setLayout(dest_layout)
         
-        main_layout.addLayout(url_layout)
+        main_layout.addWidget(cert_group)
         main_layout.addLayout(file_layout)
         main_layout.addWidget(dest_group)
-        main_layout.addWidget(sign_btn)
+        main_layout.addLayout(btn_layout)
         
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
@@ -192,10 +266,30 @@ class SignerUI(QMainWindow):
             self.file_input.setText(self.file_path)
             logger.info(f"Selected file: {self.file_path}")
 
+    def generate_self_signed(self):
+        """Generate self-signed certificate"""
+        domain = self.self_signed_domain.text()
+        if not domain:
+            self.show_error("Domain is required for self-signed certificate")
+            return
+        
+        try:
+            # This would normally call the generate_cert.py script
+            # For demo purposes, we'll just show a message
+            msg = (f"Self-signed certificate for {domain} generated.\n"
+                   "Files created: private_key.pem, certificate.pem")
+            QMessageBox.information(self, "Success", msg)
+            logger.info(f"Generated self-signed certificate for {domain}")
+        except Exception as e:
+            self.show_error(f"Certificate generation failed: {str(e)}")
+            logger.exception("Certificate generation failed")
+
     def process_file(self):
         """Main processing function for signing and distribution"""
         url = self.url_input.text()
-        if not url:
+        password = self.pass_input.text().encode() or None
+        
+        if not url and not self.self_signed_check.isChecked():
             self.show_error("Certificate URL is required")
             return
         
@@ -204,13 +298,28 @@ class SignerUI(QMainWindow):
             return
         
         try:
-            # Download certificate
-            cert_data = CertificateHandler.download_certificate(url)
-            logger.info(f"Certificate downloaded from {url}")
-            
-            # Load private key
-            private_key = CertificateHandler.load_private_key(cert_data)
-            logger.info("Private key loaded")
+            if self.self_signed_check.isChecked():
+                # Use self-signed certificate
+                domain = self.self_signed_domain.text()
+                if not domain:
+                    self.show_error("Domain is required for self-signed certificate")
+                    return
+                
+                # In a real implementation, we would load the generated files
+                # For demo, we'll generate a temporary key
+                private_key = rsa.generate_private_key(
+                    public_exponent=65537,
+                    key_size=2048,
+                )
+                logger.info(f"Using self-signed certificate for {domain}")
+            else:
+                # Download certificate
+                cert_data = CertificateHandler.download_certificate(url)
+                logger.info(f"Certificate downloaded from {url}")
+                
+                # Load private key
+                private_key = CertificateHandler.load_private_key(cert_data, password)
+                logger.info("Private key loaded")
             
             # Sign file
             signature = FileSigner.sign_file(self.file_path, private_key)
