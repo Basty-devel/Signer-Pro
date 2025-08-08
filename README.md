@@ -2,7 +2,7 @@
 
 A professional application for signing executable files and scripts (.exe, .py, etc.) using certificates from remote sources, with options for local saving or network distribution.
 ```bash
-signer.py
+signer-pro.py
 ├── CertificateHandler (certificate operations)
 ├── FileSigner (signing operations)
 ├── NetworkSender (network transmission)
