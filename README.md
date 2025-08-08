@@ -20,3 +20,5 @@ python -m venv signer-env
 source signer-env/bin/activate  # Linux/Mac
 signer-env\Scripts\activate      # Windows
 pip install -r requirements.txt
+python3 signer-pro.py    # Linux/Mac
+python.exe signer-pro.py # Windows
