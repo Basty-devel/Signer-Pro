@@ -16,4 +16,7 @@ A professional application for signing executable files and scripts (.exe, .py, 
 
 ## Installation
 ```bash
+python -m venv signer-env
+source signer-env/bin/activate  # Linux/Mac
+signer-env\Scripts\activate      # Windows
 pip install -r requirements.txt
